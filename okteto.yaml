@@ -1,0 +1,12 @@
+build:
+  app:
+    context: .
+
+deploy:
+  remote: true
+  commands:
+    - name: Deploy users-cleanup
+      command: |
+        export INACTIVE_DAYS="${INACTIVE_DAYS:-90}"
+        envsubst '${OKTETO_BUILD_APP_IMAGE} ${INACTIVE_DAYS}' < k8s.yaml | kubectl apply -f -
+        kubectl rollout status deployment/users-cleanup --timeout=180s
