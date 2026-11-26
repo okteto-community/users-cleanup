@@ -3,13 +3,11 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -21,6 +19,9 @@ import (
 	"github.com/okteto/users-cleanup/app/store"
 	"github.com/okteto/users-cleanup/app/web"
 )
+
+// inactiveDays is the number of days without activity after which a user is inactive.
+const inactiveDays = 90
 
 // keepAwake reads the persistent mark from Kubernetes and changes it through Okteto.
 type keepAwake struct {
@@ -37,10 +38,6 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
-	inactiveDays, err := intEnv("INACTIVE_DAYS", 90)
-	if err != nil || inactiveDays < 1 {
-		return errors.New("INACTIVE_DAYS must be a positive number of days")
-	}
 	port := envOr("PORT", "8080")
 	dataDir := envOr("DATA_DIR", "/data")
 
@@ -113,16 +110,4 @@ func envOr(name, fallback string) string {
 		return v
 	}
 	return fallback
-}
-
-func intEnv(name string, fallback int) (int, error) {
-	v := os.Getenv(name)
-	if v == "" {
-		return fallback, nil
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return 0, fmt.Errorf("%s: %w", name, err)
-	}
-	return n, nil
 }

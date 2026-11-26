@@ -1,6 +1,6 @@
 # Okteto Users Cleanup
 
-A small service that finds the Okteto users without activity in the last 90 days and deletes the ones that are safe to delete. Deploy it with `okteto deploy` and you get a page to review the plan, run the cleanup and schedule it.
+A small service that finds the Okteto users without activity in the last 90 days and deletes the ones that are safe to delete. Deploy it from the Okteto UI and you get a page to review the plan, run the cleanup and schedule it.
 
 > This is an experiment and Okteto does not officially support it.
 
@@ -26,7 +26,7 @@ Active users are never inspected nor touched.
 
 ## Who gets deleted
 
-A user is **inactive** when their last activity is older than `INACTIVE_DAYS` (90 by default). A user who never signed in counts from the day the account was created.
+A user is **inactive** when their last activity is older than 90 days. A user who never signed in counts from the day the account was created.
 
 Deleting an Okteto user also deletes every namespace the user owns. For that reason, an inactive user is **kept** when any of these is true:
 
@@ -60,31 +60,15 @@ If the owner is not an admin, the page says so and nothing else works. There are
 
 Use a dedicated namespace: the owner of the namespace shows as active for as long as the service runs.
 
-## Deploy
+## Deploy from the Okteto UI
 
-```bash
-okteto namespace create users-cleanup
-okteto deploy -n users-cleanup
-```
+In the Okteto UI, open the namespace where the service will run:
 
-When the deploy finishes, Okteto prints the URL of the page:
+1. Click **Deploy**.
+2. Put the Git URL of this repository: `https://github.com/okteto-community/users-cleanup`
+3. Click **Deploy**.
 
-```
-Endpoints available:
-  - https://users-cleanup-users-cleanup.<your-okteto-domain>
-```
-
-You can also deploy it from the Okteto UI (**Deploy**, then select this repository) or add it to the Catalog (**Admin → Catalog**).
-
-### Variables
-
-| Variable | Default | Description |
-|---|---|---|
-| `INACTIVE_DAYS` | `90` | Days without activity after which a user is inactive |
-
-```bash
-okteto deploy -n users-cleanup --var INACTIVE_DAYS=180
-```
+When the deploy finishes, the Okteto UI shows the endpoint of the page.
 
 ## Weekly cleanup
 
