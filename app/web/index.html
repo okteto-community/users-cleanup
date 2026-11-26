@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Okteto Users Cleanup</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+  :root {
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #f8fafb; --border: #e2e7ec;
+    --text: #17233a; --muted: #64748b; --faint: #94a3b8;
+    --accent: #00a8a2; --accent-strong: #008a85; --accent-soft: #e0f7f6;
+    --danger: #c9372c; --danger-strong: #a82a21; --danger-soft: #fdecea;
+    --warn: #a15c00; --warn-soft: #fff4e0;
+    --ok: #1a7f4b; --ok-soft: #e4f6ec;
+    --shadow: 0 1px 2px rgba(23,35,58,.06), 0 1px 8px rgba(23,35,58,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1722; --surface: #172230; --surface-2: #1c2937; --border: #2a3847;
+      --text: #e6edf3; --muted: #9aa8b8; --faint: #6b7a8c;
+      --accent: #2fd3cc; --accent-strong: #5fe0da; --accent-soft: #10353a;
+      --danger: #f0736a; --danger-strong: #f4918a; --danger-soft: #3a1d1c;
+      --warn: #f0b354; --warn-soft: #382a12;
+      --ok: #5fcf93; --ok-soft: #15301f;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  button, select, input { font: inherit; color: inherit; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); }
+  .bar { max-width: 1180px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, #00d1ca, #0097a7); flex: none; display: grid; place-items: center; color: #fff; font-weight: 700; }
+  h1 { font-size: 17px; margin: 0; line-height: 1.2; }
+  .sub { color: var(--muted); font-size: 12.5px; }
+  .grow { flex: 1; }
+  .pill { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 24px 60px; }
+
+  .banner { border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger); }
+  .banner.info { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+
+  .top { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 20px; }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .headline { font-size: 22px; font-weight: 650; line-height: 1.25; margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 16px; }
+  .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .meta { color: var(--faint); font-size: 12.5px; }
+
+  .btn { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-weight: 550; }
+  .btn:hover:not(:disabled) { background: var(--surface-2); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .btn.danger:hover:not(:disabled) { background: var(--danger-strong); }
+  .btn.small { padding: 4px 10px; font-size: 12.5px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .progress { margin-top: 14px; }
+  .track { height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .fill { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+  .fill.indeterminate { width: 35%; animation: slide 1.2s infinite ease-in-out; }
+  @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .switch { position: relative; width: 42px; height: 24px; flex: none; }
+  .switch input { opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; position: absolute; z-index: 1; }
+  .switch span { position: absolute; inset: 0; background: var(--border); border-radius: 99px; transition: background .15s; }
+  .switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .switch input:checked + span { background: var(--accent); }
+  .switch input:checked + span::after { transform: translateX(18px); }
+  .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  select, input[type=search] { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; }
+  .note { margin-top: 12px; font-size: 12.5px; color: var(--muted); display: flex; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex: none; background: var(--faint); }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--danger); }
+
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 860px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .stat .n { font-size: 26px; font-weight: 650; line-height: 1.1; }
+  .stat .l { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .stat.del .n { color: var(--danger); } .stat.blk .n { color: var(--warn); } .stat.act .n { color: var(--ok); }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; overflow-x: auto; }
+  .tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 9px 14px; cursor: pointer; color: var(--muted); font-weight: 550; white-space: nowrap; }
+  .tab[aria-selected=true] { color: var(--text); border-bottom-color: var(--accent); }
+  .count { background: var(--surface-2); border: 1px solid var(--border); border-radius: 99px; font-size: 11.5px; padding: 0 7px; margin-left: 6px; color: var(--muted); }
+
+  .section { margin-bottom: 26px; }
+  .section h3 { font-size: 15px; margin: 0 0 3px; }
+  .section p.desc { margin: 0 0 10px; color: var(--muted); }
+  .tablewrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; padding: 10px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { min-width: 230px; }
+  .name { font-weight: 550; } .email { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+  .when { white-space: nowrap; } .date { color: var(--muted); font-size: 12.5px; }
+  .empty { padding: 26px 16px; text-align: center; color: var(--muted); }
+  .badge { display: inline-block; border-radius: 6px; padding: 1px 8px; font-size: 12px; font-weight: 550; margin: 0 4px 4px 0; white-space: nowrap; }
+  .badge.ok { background: var(--ok-soft); color: var(--ok); }
+  .badge.del { background: var(--danger-soft); color: var(--danger); }
+  .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  .badge.plain { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .ns { margin-bottom: 8px; } .ns:last-child { margin-bottom: 0; }
+  .ns code { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; }
+  .chip { display: inline-block; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 0 7px; font-size: 12px; margin: 3px 4px 0 0; }
+  .chip b { font-weight: 600; color: var(--muted); margin-right: 4px; }
+  .err { color: var(--danger); font-size: 12.5px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar input[type=search] { min-width: 260px; }
+  .runhead { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; margin-bottom: 16px; }
+  .runhead strong { font-size: 16px; }
+  .link { background: none; border: 0; color: var(--accent-strong); cursor: pointer; padding: 0; text-decoration: underline; }
+
+  dialog { border: 1px solid var(--border); border-radius: 14px; padding: 0; background: var(--surface); color: var(--text); width: min(520px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  dialog::backdrop { background: rgba(10,16,25,.55); }
+  .dlg { padding: 22px; }
+  .dlg h3 { margin: 0 0 8px; font-size: 18px; }
+  .dlg ul { margin: 10px 0; padding: 10px 14px; list-style: none; max-height: 190px; overflow: auto; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; }
+  .dlg li { padding: 2px 0; }
+  .dlg .actions { justify-content: flex-end; margin-top: 18px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="mark">U</div>
+    <div>
+      <h1>Users Cleanup</h1>
+      <div class="sub" id="cluster">Okteto</div>
+    </div>
+    <div class="grow"></div>
+    <div class="pill" id="rule"></div>
+  </div>
+</header>
+<main>
+  <div id="banners"></div>
+  <div class="top">
+    <div class="card" id="cleanup-card"></div>
+    <div class="card" id="schedule-card"></div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div id="panel"></div>
+</main>
+<dialog id="confirm"></dialog>
+
+<script>
+"use strict";
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const REASONS = {
+  "admin": "Admin",
+  "resources": "Has resources",
+  "shared": "Shared namespace",
+  "no-activity-data": "No activity data",
+  "check-failed": "Check failed",
+  "active-again": "Active again",
+};
+const ROW_LIMIT = 300;
+const UNREACHABLE = "Could not reach the service";
+
+const state = {
+  status: null, plan: null, planVersion: -1, run: null, runId: null,
+  tab: "plan", search: "", filter: "all", shown: ROW_LIMIT, error: "", pending: false,
+};
+
+// h builds DOM nodes. Text always goes through textContent, so names and emails
+// coming from the API can never inject markup.
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, "");
+    else el.setAttribute(k, v);
+  }
+  for (const c of children.flat()) {
+    if (c === null || c === undefined || c === false) continue;
+    el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: method === "GET" ? {} : { "Content-Type": "application/json", "X-Users-Cleanup": "1" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 204 || res.status === 202) return null;
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((data && data.error) || ("HTTP " + res.status));
+  return data;
+}
+
+function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
+function fmtDate(v) { return v ? new Date(v).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : ""; }
+function fmtDateTime(v) { return v ? new Date(v).toLocaleString(undefined, { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""; }
+function ago(v) {
+  const s = Math.max(0, (Date.now() - new Date(v).getTime()) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return plural(Math.floor(s / 60), "minute") + " ago";
+  if (s < 86400) return plural(Math.floor(s / 3600), "hour") + " ago";
+  return plural(Math.floor(s / 86400), "day") + " ago";
+}
+function daysAgo(n) { return n === 0 ? "today" : n === 1 ? "yesterday" : n + " days ago"; }
+
+// ---- cells shared by every table -------------------------------------------
+
+function userCell(u) {
+  return h("td", {}, h("div", { class: "name" }, u.name || u.id), h("div", { class: "email" }, u.email || u.id));
+}
+
+function activityCell(u) {
+  if (u.lastSeen) {
+    return h("td", { class: "when" }, h("div", {}, daysAgo(u.inactiveDays)), h("div", { class: "date" }, fmtDate(u.lastSeen)));
+  }
+  if (u.creationDate) {
+    return h("td", { class: "when" }, h("div", {}, "Never signed in"), h("div", { class: "date" }, "Created " + fmtDate(u.creationDate)));
+  }
+  return h("td", { class: "when" }, h("div", {}, "Unknown"), h("div", { class: "date" }, "No dates reported"));
+}
+
+function reasonBadges(u) {
+  return (u.reasons || []).map(r => h("span", { class: "badge warn" }, REASONS[r] || r));
+}
+
+function namespaceList(u, onlyWithDetails) {
+  const list = (u.namespaces || []).filter(ns => !onlyWithDetails || ns.resourceCount || ns.otherMembers);
+  if (!list.length) return null;
+  return list.map(ns => {
+    const more = (ns.resourceCount || 0) - (ns.resources || []).length;
+    return h("div", { class: "ns" },
+      h("code", {}, ns.name),
+      ns.type && ns.type !== "development" ? h("span", { class: "meta" }, " " + ns.type) : null,
+      !ns.resourceCount && !ns.otherMembers ? h("span", { class: "meta" }, " · empty") : null,
+      ns.otherMembers ? h("div", {}, h("span", { class: "chip" }, "Shared with " + plural(ns.otherMembers, "other user"))) : null,
+      ns.resourceCount ? h("div", {},
+        (ns.resources || []).map(r => h("span", { class: "chip" }, h("b", {}, r.kind), r.name)),
+        more > 0 ? h("span", { class: "chip" }, "+" + more + " more") : null) : null);
+  });
+}
+
+function blockedDetails(u) {
+  const parts = [];
+  if ((u.reasons || []).includes("admin")) parts.push(h("div", { class: "meta" }, "Admins are never deleted."));
+  if ((u.reasons || []).includes("no-activity-data")) parts.push(h("div", { class: "meta" }, "Okteto reports no last activity and no creation date."));
+  if ((u.reasons || []).includes("active-again")) parts.push(h("div", { class: "meta" }, "The user came back while the cleanup was running."));
+  const ns = namespaceList(u, true);
+  if (ns) parts.push(...ns);
+  if (u.error) parts.push(h("div", { class: "err" }, u.error));
+  return parts.length ? parts : h("span", { class: "meta" }, "—");
+}
+
+function table(headers, rows, emptyText) {
+  if (!rows.length) return h("div", { class: "tablewrap" }, h("div", { class: "empty" }, emptyText));
+  return h("div", { class: "tablewrap" }, h("table", {},
+    h("thead", {}, h("tr", {}, headers.map(x => h("th", {}, x)))),
+    h("tbody", {}, rows)));
+}
+
+function deletableTable(users, emptyText, namespacesLabel) {
+  return table(["User", "Last activity", namespacesLabel],
+    users.map(u => h("tr", {}, userCell(u), activityCell(u),
+      h("td", {}, namespaceList(u, false) || h("span", { class: "meta" }, "None")))), emptyText);
+}
+
+function blockedTable(users, emptyText) {
+  return table(["User", "Last activity", "Why", "What blocks the deletion"],
+    users.map(u => h("tr", {}, userCell(u), activityCell(u), h("td", {}, reasonBadges(u)), h("td", {}, blockedDetails(u)))), emptyText);
+}
+
+// ---- top cards --------------------------------------------------------------
+
+function progressNode(busy) {
+  const p = busy.total ? Math.round(100 * busy.done / busy.total) : 0;
+  return h("div", { class: "progress" },
+    h("div", { class: "meta" }, busy.phase + (busy.total ? " · " + busy.done + " of " + busy.total : "") + "…"),
+    h("div", { class: "track" }, h("div", { class: "fill" + (busy.total ? "" : " indeterminate"), style: busy.total ? "width:" + p + "%" : null })));
+}
+
+function renderCleanupCard() {
+  const s = state.status, p = state.plan, busy = s.busy;
+  const card = document.getElementById("cleanup-card");
+  const days = s.info.inactiveDays;
+  const nodes = [h("h2", {}, "Cleanup")];
+
+  if (!p) {
+    nodes.push(h("p", { class: "headline" }, s.planError ? "The plan is not available" : "Looking for inactive users…"),
+      h("p", { class: "lead" }, s.planError ? "The scan failed. Fix the problem above and try again." : "Nothing is deleted until you ask for it."));
+  } else {
+    const t = p.totals;
+    nodes.push(h("p", { class: "headline" }, t.deletable ? plural(t.deletable, "user") + " can be deleted" : "Nothing to clean up"));
+    const blocked = t.blocked ? " " + plural(t.blocked, "inactive user") + (t.blocked === 1 ? " is" : " are") + " blocked and will be kept." : "";
+    nodes.push(h("p", { class: "lead" }, t.deletable
+      ? (t.deletable === 1 ? "This user has" : "These users have") + " not used Okteto in the last " + days + " days and " + (t.deletable === 1 ? "owns" : "own") + " no resources." + blocked
+      : "No user is both inactive for " + days + " days and free of resources." + blocked));
+  }
+
+  const deletable = p ? p.totals.deletable : 0;
+  nodes.push(h("div", { class: "actions" },
+    h("button", { class: "btn danger", disabled: !!busy || !deletable || state.pending, onclick: openConfirm },
+      deletable ? "Delete " + plural(deletable, "user") + "…" : "Delete inactive users"),
+    h("button", { class: "btn", disabled: !!busy || state.pending, onclick: () => act(() => api("POST", "/api/scan")) }, "Refresh plan"),
+    p && !busy ? h("span", { class: "meta" }, "Plan from " + ago(p.generatedAt)) : null));
+
+  if (busy) nodes.push(progressNode(busy));
+  card.replaceChildren(...nodes);
+}
+
+function renderScheduleCard() {
+  const sc = state.status.schedule;
+  const card = document.getElementById("schedule-card");
+  const save = (patch) => act(() => api("POST", "/api/schedule", { enabled: sc.enabled, weekday: sc.weekday, hour: sc.hour, ...patch }));
+
+  const toggle = h("label", { class: "switch", title: "Weekly cleanup" },
+    h("input", { type: "checkbox", checked: sc.enabled, "aria-label": "Run the cleanup every week", onchange: e => save({ enabled: e.target.checked }) }), h("span"));
+  const day = h("select", { "aria-label": "Day of the week", onchange: e => save({ weekday: Number(e.target.value) }) },
+    WEEKDAYS.map((d, i) => h("option", { value: i, selected: i === sc.weekday }, d)));
+  const hour = h("select", { "aria-label": "Hour (UTC)", onchange: e => save({ hour: Number(e.target.value) }) },
+    Array.from({ length: 24 }, (_, i) => h("option", { value: i, selected: i === sc.hour }, String(i).padStart(2, "0") + ":00")));
+
+  let keep = null;
+  if (sc.keepAwakeError) {
+    keep = h("div", { class: "note" }, h("span", { class: "dot bad" }),
+      h("span", {}, "Could not update the Keep awake setting of this namespace: " + sc.keepAwakeError + ". Mark it as persistent in the Okteto admin dashboard, or the weekly run can be missed while it sleeps."));
+  } else if (sc.enabled && sc.keepAwake === true) {
+    keep = h("div", { class: "note" }, h("span", { class: "dot ok" }),
+      h("span", {}, "Namespace " + state.status.info.namespace + " is marked as persistent, so Okteto never puts this service to sleep."));
+  } else if (sc.enabled && sc.keepAwake === false) {
+    keep = h("div", { class: "note" }, h("span", { class: "dot bad" }),
+      h("span", {}, "Namespace " + state.status.info.namespace + " is not persistent: the weekly run can be missed while it sleeps."));
+  } else if (!sc.enabled) {
+    keep = h("div", { class: "note" }, h("span", { class: "dot" }),
+      h("span", {}, "Turning this on also marks the namespace as persistent (Keep awake). Turning it off removes the mark."));
+  }
+
+  card.replaceChildren(
+    h("h2", {}, "Weekly cleanup"),
+    h("div", { class: "row", style: "margin-bottom:12px" }, toggle,
+      h("strong", {}, sc.enabled ? "On" : "Off"),
+      h("span", { class: "meta" }, sc.enabled ? "Next run " + fmtDateTime(sc.nextRun) : "Cleanups only run when you start them.")),
+    h("div", { class: "row" }, h("span", {}, "Every"), day, h("span", {}, "at"), hour, h("span", { class: "meta" }, "UTC")),
+    keep);
+}
+
+function renderStats() {
+  const t = state.plan ? state.plan.totals : null;
+  const v = k => t ? t[k] : "–";
+  const days = state.status.info.inactiveDays;
+  const tile = (cls, n, label) => h("div", { class: "stat " + cls }, h("div", { class: "n" }, n), h("div", { class: "l" }, label));
+  document.getElementById("stats").replaceChildren(
+    tile("", v("users"), "Users"),
+    tile("act", v("active"), "Active in the last " + days + " days"),
+    tile("", v("inactive"), "Inactive"),
+    tile("del", v("deletable"), "Ready to delete"),
+    tile("blk", v("blocked"), "Blocked"));
+}
+
+// ---- tabs -------------------------------------------------------------------
+
+function renderTabs() {
+  const t = state.plan ? state.plan.totals : null;
+  const history = state.status.history || [];
+  const defs = [
+    ["plan", "Plan", t ? t.inactive : null],
+    ["users", "All users", t ? t.users : null],
+    ["report", state.runId && history.length && state.runId !== history[0].id ? "Run report" : "Last run", null],
+    ["history", "History", history.length || null],
+  ];
+  document.getElementById("tabs").replaceChildren(...defs.map(([id, label, count]) =>
+    h("button", { class: "tab", role: "tab", "aria-selected": String(state.tab === id), onclick: () => { state.tab = id; state.shown = ROW_LIMIT; window.history.replaceState(null, "", "#" + id); render(); } },
+      label, count !== null ? h("span", { class: "count" }, count) : null)));
+}
+
+function planPanel() {
+  const p = state.plan;
+  if (!p) return h("div", { class: "tablewrap" }, h("div", { class: "empty" }, state.status.planError ? "No plan: the scan failed." : "Scanning users…"));
+  const del = p.users.filter(u => u.status === "deletable");
+  const blk = p.users.filter(u => u.status === "blocked");
+  return h("div", {},
+    h("div", { class: "section" },
+      h("h3", {}, "Will be deleted (" + del.length + ")"),
+      h("p", { class: "desc" }, "Inactive users whose namespaces are empty. Deleting a user also deletes the namespaces listed here."),
+      deletableTable(del, "No user is ready to be deleted.", "Namespaces that will be deleted")),
+    h("div", { class: "section" },
+      h("h3", {}, "Blocked (" + blk.length + ")"),
+      h("p", { class: "desc" }, "Inactive users that the cleanup keeps, and what prevents their deletion."),
+      blockedTable(blk, "No inactive user is blocked.")));
+}
+
+const STATUS_BADGES = { active: ["ok", "Active"], deletable: ["del", "Ready to delete"], blocked: ["warn", "Blocked"] };
+
+function usersPanel() {
+  const p = state.plan;
+  if (!p) return h("div", { class: "tablewrap" }, h("div", { class: "empty" }, "Scanning users…"));
+  const q = state.search.trim().toLowerCase();
+  const users = p.users.filter(u =>
+    (state.filter === "all" || u.status === state.filter) &&
+    (!q || (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q)));
+  const visible = users.slice(0, state.shown);
+
+  const search = h("input", { type: "search", placeholder: "Search by name or email", value: state.search, "aria-label": "Search users",
+    oninput: e => { state.search = e.target.value; state.shown = ROW_LIMIT; renderPanel(); } });
+  const filter = h("select", { "aria-label": "Filter by status", onchange: e => { state.filter = e.target.value; state.shown = ROW_LIMIT; renderPanel(); } },
+    [["all", "All users"], ["active", "Active"], ["deletable", "Ready to delete"], ["blocked", "Blocked"]].map(([v, l]) => h("option", { value: v, selected: state.filter === v }, l)));
+
+  return h("div", {},
+    h("div", { class: "toolbar" }, search, filter, h("span", { class: "meta" }, plural(users.length, "user"))),
+    table(["User", "Role", "Last activity", "Status"],
+      visible.map(u => {
+        const [cls, label] = STATUS_BADGES[u.status] || ["plain", u.status];
+        return h("tr", {}, userCell(u),
+          h("td", {}, h("span", { class: "badge plain" }, u.role || "Developer")),
+          activityCell(u),
+          h("td", {}, h("span", { class: "badge " + cls }, label), u.status === "blocked" ? reasonBadges(u) : null));
+      }), "No user matches."),
+    users.length > visible.length ? h("p", {}, h("button", { class: "btn", onclick: () => { state.shown += ROW_LIMIT; renderPanel(); } },
+      "Show more (" + (users.length - visible.length) + " hidden)")) : null);
+}
+
+function duration(run) {
+  const s = Math.max(0, Math.round((new Date(run.finishedAt) - new Date(run.startedAt)) / 1000));
+  return s < 60 ? s + " s" : Math.floor(s / 60) + " min " + (s % 60) + " s";
+}
+
+function reportPanel() {
+  const run = state.run;
+  if (!state.status.history.length) return h("div", { class: "tablewrap" }, h("div", { class: "empty" }, "No cleanup has run yet. The report of the last run will be here."));
+  if (!run) return h("div", { class: "tablewrap" }, h("div", { class: "empty" }, "Loading the report…"));
+  const failed = run.failed || [], deleted = run.deleted || [], blocked = run.blocked || [];
+  return h("div", {},
+    h("div", { class: "runhead" },
+      h("strong", {}, fmtDateTime(run.startedAt)),
+      h("span", { class: "badge plain" }, run.trigger === "scheduled" ? "Weekly schedule" : "Started manually"),
+      h("span", { class: "meta" }, "Took " + duration(run) + " · inactive after " + run.inactiveDays + " days · " + plural(run.totals.users, "user") + " checked")),
+    run.error ? h("div", { class: "banner" }, "The run did not complete: " + run.error) : null,
+    h("div", { class: "section" }, h("h3", {}, "Deleted (" + deleted.length + ")"),
+      h("p", { class: "desc" }, "These users and their namespaces no longer exist in Okteto."),
+      deletableTable(deleted, "No user was deleted in this run.", "Namespaces deleted")),
+    failed.length ? h("div", { class: "section" }, h("h3", {}, "Could not be deleted (" + failed.length + ")"),
+      h("p", { class: "desc" }, "These users were safe to delete, but the deletion failed."),
+      table(["User", "Last activity", "Error"], failed.map(u => h("tr", {}, userCell(u), activityCell(u), h("td", { class: "err" }, u.error || "Unknown error"))), "")) : null,
+    h("div", { class: "section" }, h("h3", {}, "Kept (" + blocked.length + ")"),
+      h("p", { class: "desc" }, "Inactive users that were not deleted, and what blocked each one."),
+      blockedTable(blocked, "No inactive user was kept.")));
+}
+
+function historyPanel() {
+  const runs = state.status.history;
+  return table(["Run", "Started by", "Deleted", "Kept", "Failed", "Duration", ""],
+    runs.map(r => h("tr", {},
+      h("td", { class: "when" }, fmtDateTime(r.startedAt)),
+      h("td", {}, r.trigger === "scheduled" ? "Weekly schedule" : "Manual"),
+      h("td", {}, r.totals.deleted), h("td", {}, r.totals.blocked),
+      h("td", { class: r.totals.failed || r.error ? "err" : "" }, r.error ? "Run failed" : r.totals.failed),
+      h("td", {}, duration(r)),
+      h("td", {}, h("button", { class: "link", onclick: () => showRun(r.id) }, "View report")))),
+    "No cleanup has run yet.");
+}
+
+function renderPanel() {
+  const panels = { plan: planPanel, users: usersPanel, report: reportPanel, history: historyPanel };
+  const panel = document.getElementById("panel");
+  // The panel is rebuilt on every refresh: do not interrupt somebody using the
+  // filter, and keep the caret of the search box where it was.
+  const active = document.activeElement;
+  if (panel.contains(active) && active.tagName === "SELECT") return;
+  const caret = panel.contains(active) && active.type === "search" ? active.selectionStart : null;
+  panel.replaceChildren(panels[state.tab]());
+  if (caret !== null) {
+    const search = panel.querySelector("input[type=search]");
+    if (search) { search.focus(); search.setSelectionRange(caret, caret); }
+  }
+}
+
+function renderBanners() {
+  const s = state.status, out = [];
+  if (s.info.demo) out.push(h("div", { class: "banner info" }, "Demo mode: the users are made up and nothing is deleted from a real cluster."));
+  if (state.error) out.push(h("div", { class: "banner" }, state.error));
+  if (s.planError) out.push(h("div", { class: "banner" }, "The last scan failed: " + s.planError));
+  document.getElementById("banners").replaceChildren(...out);
+}
+
+function render() {
+  const s = state.status;
+  if (!s) return;
+  document.getElementById("cluster").textContent = s.info.cluster.replace(/^https?:\/\//, "");
+  document.getElementById("rule").textContent = "Inactive = no activity in " + s.info.inactiveDays + " days";
+  renderBanners(); renderCleanupCard(); renderStats(); renderTabs(); renderPanel();
+  // Rebuilding the schedule card while one of its selects is open would close it.
+  if (!document.getElementById("schedule-card").contains(document.activeElement)) renderScheduleCard();
+}
+
+// ---- actions ----------------------------------------------------------------
+
+function openConfirm() {
+  const dlg = document.getElementById("confirm");
+  const users = state.plan.users.filter(u => u.status === "deletable");
+  const namespaces = users.reduce((n, u) => n + (u.namespaces || []).length, 0);
+  dlg.replaceChildren(h("div", { class: "dlg" },
+    h("h3", {}, "Delete " + plural(users.length, "inactive user") + "?"),
+    h("p", { class: "lead", style: "margin:0" }, "This permanently deletes " + (users.length === 1 ? "this user" : "these users") +
+      (namespaces ? " and " + plural(namespaces, "empty namespace") : "") + " from Okteto. It cannot be undone."),
+    h("ul", {}, users.map(u => h("li", {}, (u.name || u.id) + (u.email ? " · " + u.email : "")))),
+    h("p", { class: "meta", style: "margin:0" }, "Every user is checked again right before being deleted. Anyone who came back or got resources since this plan is kept."),
+    h("div", { class: "actions" },
+      h("button", { class: "btn", onclick: () => dlg.close() }, "Cancel"),
+      h("button", { class: "btn danger", onclick: () => { dlg.close(); state.tab = "report"; state.runId = null; state.run = null; act(() => api("POST", "/api/run")); } },
+        "Delete " + plural(users.length, "user")))));
+  dlg.showModal();
+}
+
+async function act(fn) {
+  state.pending = true; state.error = "";
+  try { await fn(); } catch (e) { state.error = e.message; }
+  state.pending = false;
+  await refresh();
+}
+
+async function showRun(id) {
+  state.tab = "report"; state.runId = id; state.run = null; render();
+  try { state.run = await api("GET", "/api/runs/" + encodeURIComponent(id)); } catch (e) { state.error = e.message; }
+  render();
+}
+
+let timer = null;
+async function refresh() {
+  clearTimeout(timer);
+  try {
+    const previous = state.status;
+    state.status = await api("GET", "/api/status");
+    if (state.status.planVersion !== state.planVersion) {
+      state.plan = await api("GET", "/api/plan");
+      state.planVersion = state.status.planVersion;
+    }
+    const latest = state.status.history.length ? state.status.history[0].id : null;
+    const previousLatest = previous && previous.history.length ? previous.history[0].id : null;
+    // Follow the newest run, unless the admin opened an older report.
+    if (latest && (!state.runId || (state.runId === previousLatest && latest !== previousLatest))) state.runId = latest;
+    if (state.runId && (!state.run || state.run.id !== state.runId)) {
+      state.run = await api("GET", "/api/runs/" + encodeURIComponent(state.runId));
+    }
+    // Errors of an action stay visible; a connection error goes away once it works again.
+    if (state.error.startsWith(UNREACHABLE)) state.error = "";
+  } catch (e) {
+    state.error = UNREACHABLE + ": " + e.message;
+  }
+  render();
+  timer = setTimeout(refresh, state.status && state.status.busy ? 1000 : 5000);
+}
+
+// The tab is in the URL, so that a report can be bookmarked or shared.
+if (["plan", "users", "report", "history"].includes(location.hash.slice(1))) state.tab = location.hash.slice(1);
+refresh();
+</script>
+</body>
+</html>
